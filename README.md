@@ -1,4 +1,4 @@
-# Easy_IoT API v1.0
+# EZIoT API v1.0
 
 Help user to connect to China Telecom NB-IOT paltform very conveniently on most of Single Chip Microcomputer.
 
