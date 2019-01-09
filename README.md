@@ -8,4 +8,7 @@ Premised, you need to know IOT-paltform's communication dataformat and then regi
 
 First step is initialize. 
 
-... wait to write continue.
+You can try reading from <user_example> to learn how to use this API.
+
+... 
+Other descriptions were waiting to supplement.
