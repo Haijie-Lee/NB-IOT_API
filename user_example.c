@@ -156,6 +156,7 @@ void main(void)
 			printf("Received message[%d] response.\n", message_id);
 		}
 		memset(rec_buf, 0, 512);
+		rec_length = 0;
 	}
 }
 
