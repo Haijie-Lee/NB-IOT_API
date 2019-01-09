@@ -11,4 +11,4 @@ First step is initialize.
 You can try reading from <user_example> to learn how to use this API.
 
 ... 
-Other descriptions were waiting to supplement.
+Other descriptions is waiting to supplement.
