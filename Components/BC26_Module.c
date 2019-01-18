@@ -73,7 +73,9 @@ uint8_t TryReceiveMessage( uint8_t *rec_buf );
 
 uint8_t IF_ReceiveMessage(void)
 {
-	ReadData_FromSerialPort();
+	uint8_t ret =0 ;
+	
+	ret =  ReadData_FromSerialPort();
 	if( MsgDownload.queue_n > 0 ) {
 		return 1;
 	}
@@ -83,7 +85,9 @@ uint8_t IF_ReceiveMessage(void)
 
 uint8_t IF_ReveivedCmdResponse(void)
 {
-	ReadData_FromSerialPort();
+	uint8_t ret =0 ;
+	
+	ret =  ReadData_FromSerialPort();
 	if( sending_cmd_flag ) {
 		return 0;
 	}
@@ -101,15 +105,21 @@ uint8_t IF_SendMessageError(void)
 }
 
 
-uint8_t SendCmd( CmdPack_t *cmd )
+uint8_t SendCmd( CmdPack_t *cmd, uint16_t delay )
 {
+	uint8_t ret =0 ;
+	
+	ret =  ReadData_FromSerialPort();
 	if( stat_cmd != NULL )
 		return 1;
-	
 	if( cmd == NULL )
 		return 2;
 	
+	if( delay < 10000 )
+		TimerDelay_ms( delay );
+	
 	stat_cmd = cmd;
+	sending_cmd_flag = 1;
 	return 0;
 }
 
@@ -329,6 +339,8 @@ uint8_t  TrySendMessage( message_pack_t*  message)
 	if( strncmp( rec_buf, "OK", 2 ) != 0 ) {
 		return 5; 	// NB module can't send message.
 	}
+	
+	sending_message_flag = 1;
 	return 0;
 }
 
@@ -354,14 +366,19 @@ uint8_t TryReceiveResponse(  uint8_t  *rec_buf )
 	cmd_response_t *response_reg, *response_rsp;
 	
 	if( stat_cmd == NULL) {
-		return ret;	// No command is waiting to receive a response.
+		return 0t;	// No command is waiting to receive a response.
 	}else {
 		response_reg = stat_cmd->reg_response;
 		response_rsp = stat_cmd->cmd_response;
 		response_buff = response_reg->response;
 	}
+	if( stat_cmd->cmd_response_n >= stat_cmd->cmd_response_max ) {
+		sending_cmd_flag = 0;
+		stat_cmd = NULL;
+		return 0;
+	}
 	
-	for( i=0; i < stat_cmd->cmd_response_number; i++ )
+	while( response_reg != NULL )
 	{
 		if( strncmp( rec_buf, response_buff, 6) == 0 )
 		{	// If received data is cmd response.
@@ -380,11 +397,18 @@ uint8_t TryReceiveResponse(  uint8_t  *rec_buf )
 				return 2;	// Calloc buffer error.
 			}
 			memcpy( response_rsp->response, rec_buf, data_length );
+			stat_cmd->cmd_response_n++;
+			if( stat_cmd->cmd_response_n >= stat_cmd->cmd_response_max ) {
+				sending_cmd_flag = 0;
+				stat_cmd = NULL;
+				return 0;
+			}
 			break; 
 		}
 		response_reg = response_reg->next;
 		response_buff = response_reg->response;
 	}
+	
 	
 	return ret;
 }

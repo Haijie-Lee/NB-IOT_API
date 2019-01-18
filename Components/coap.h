@@ -23,6 +23,7 @@ uint8_t Get_TlvFromCmd(void);
 
 uint8_t Put_MessagePeriod( uint8_t message_type, uint16_t period );
 uint16_t Get_MessagePeriod(uint8_t message_type);
+uint8_t Put_CmdCallback(uint8_t cmd_id, CMD_Callback_t function );
 void Put_BetteryLevel(uint8_t level);
 void Put_SignalStrength(uint32_t strength);
 void Put_TimeStamp(uint64_t timestamp);

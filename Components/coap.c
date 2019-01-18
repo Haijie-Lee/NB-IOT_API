@@ -2,10 +2,12 @@
 	
 */
 #include "iot_user.h"
-
 #include "coap.h"
-#include "BC26_Module.h"
 #include "common.h"
+
+#if NB_MODEL_VERSION == BC_26	
+	#include "BC26_Module.h"
+#endif
 
 #include <string.h>
 #include <stdlib.h>
@@ -337,6 +339,23 @@ uint16_t Get_MessagePeriod(uint8_t message_type)
 	}
 	
 	return gl_Message_table[i].period;
+}
+
+
+uint8_t Put_CmdCallback(uint8_t cmd_id, CMD_Callback_t function )
+{
+	size_t i;
+	
+	for( i=0; i<CMD_MAX; i++ ) {
+		if( cmd_id == gl_ACK_table[i].cmd_type) break;
+	}
+	if( i == CMD_MAX) {
+		LOGE("Put_CmdCallback error: ‘cmd_id’ not found.\n");
+		return 1;
+	}
+	
+	gl_ACK_table[i].function = function;
+	return 0;
 }
 
 

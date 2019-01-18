@@ -23,7 +23,8 @@ typedef struct cmd_response_
 typedef struct cmd_pack_
 {
 	char *cmd;
-	uint8_t cmd_response_number;
+	uint8_t cmd_response_max;
+	uint8_t cmd_response_n;
 	cmd_response_t *reg_response;
 	cmd_response_t *cmd_response;
 }CmdPack_t;	// “命令”数据包
@@ -42,7 +43,7 @@ uint8_t IF_SendMessageError(void);
 
 uint8_t SendMessage( uint8_t *buff, uint8_t data_length );
 uint8_t ReceiveMessage( uint8_t *out_buff, uint8_t *data_length );
-uint8_t SendCmd( CmdPack_t *cmd );
+uint8_t SendCmd( CmdPack_t *cmd, uint16_t delay );
 CmdPack_t* ReceiveCmd	(void);
 
 uint8_t WriteData_ToSerialPort( void );
