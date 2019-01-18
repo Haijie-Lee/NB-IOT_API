@@ -23,3 +23,7 @@
 ... 
 
 其他的描述正在等待补充。
+
+![API结构图][scenery]
+
+[scenery]:https://github.com/Haijie-Lee/NB-IOT_API/blob/NB-IOT_API-V1.5/Components/API%E7%BB%93%E6%9E%84%E5%9B%BE.jpg "API的层次图"
