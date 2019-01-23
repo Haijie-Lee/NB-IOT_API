@@ -135,17 +135,5 @@ uint8_t Disconnnect_IOT_Platfrom(void)
 }
 
 
-uint8_t Check_SendCmdError(void)
-{
-	uint8_t ret;
-	
-	ret = ReadData_FromSerialPort();
-	if( ret > 1 ) {
-		LOGE("ReadData_FromSerialPort function error[%d].\n", ret);
-	}
-	ret = IF_ReceiveMessage();
-	return ret;
-}
-
 // ——————————————    本地函数源    —————————————— //
 

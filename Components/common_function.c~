@@ -10,7 +10,6 @@
 #include "iot_user.h"
 #include "common_function.h"
 
-#include <stdlib.h>
 #include <stdio.h>
 
 

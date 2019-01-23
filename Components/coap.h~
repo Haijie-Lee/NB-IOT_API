@@ -25,7 +25,7 @@
 				@index: TLV的名字（即TLV表格索引号）。
 	返回值：成功返回 0，失败返回错误码。
 */
-#define Get_TlvValue(value_type,index)  ( gl_TLV_table[index].flag > 0x04 ?	\
+#define Get_TlvValue(value_type,index)  (gl_TLV_table[index].flag > 0x04 ?	\
 	*(value_type*)(&gl_TLV_table[index].value) : *(value_type*)gl_TLV_table[index].value )
 
 /* 功能：初始化Coap流处理模块。

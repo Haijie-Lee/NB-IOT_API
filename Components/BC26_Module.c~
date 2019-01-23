@@ -332,7 +332,7 @@ uint8_t  TrySendMessage( message_pack_t*  message)
 	if( buf_temp == NULL ) return 2;	// calloc failed.
 	
 	sprintf( buf_temp, MESSAGE_HEAD_SEND, p->message_length );
-	data_length = strlen( buf_temp );
+	data_length = strrlen( buf_temp );
 	data_length += HexArray_2_HexString( (char *)p->message, (char *)buf_temp+data_length, p->message_length );
 	strncat( buf_temp, MESSAGE_TAIL_SEND,  (p->message_length*2+100) );
 	

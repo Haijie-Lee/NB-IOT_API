@@ -1,5 +1,10 @@
-/* 
-	
+/* *Copyright(C), Haijie Lee. 2019. AllRightsReserved.
+	*FileName:  BC26模组的AT指令 模块头文件.
+	*Author:  Haijie Lee.
+	*Version:  1.5.
+	*Date:  2019.01.22.
+	*Description:  用户可通过调用此文件的接口函数完成发送AT指令到NB模组。
+	*Others:  用户不应随意修改此文件，除非你知道自己在做什么。
 */
 #ifndef IOT_API__COMPONENT__BC26_AT_H
 #define IOT_API__COMPONENT__BC26_AT_H

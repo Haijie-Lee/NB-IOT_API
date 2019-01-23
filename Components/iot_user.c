@@ -8,7 +8,7 @@
 							以此完成IOT通信的过程。
 	*Others:  用户不应随意修改IOT定义的数据，除非你知道你在做什么。
 */
-#include "user_example.h"
+#include "iot_user.h"
 /* 本模块的依赖与接口声明 */
 #include "coap.h"
 #include "nb_cmd.h"
@@ -42,7 +42,7 @@ typedef enum
 /* 用户在平台定义的下发命令的名称 */
 typedef enum
 {
-	General_Cmd_ID = 101,
+	General_Cmd_ID = 101;
 }Command_ID_Define;
 
 // ——————————————    本地变量   —————————————— //
@@ -108,7 +108,7 @@ void main(void);
 
 void main(void)
 {
-	uint8_t ret, coap_type, message_id;
+	uint8_t ret, coap_type, coap_id;
 	
 	do{
 		ret = Init_NB_IOT();
@@ -132,15 +132,20 @@ void main(void)
 		ret = CheckReceiveMessage();
 		if( ret ) {
 			DecrementReceiveCoapMessage(  &coap_type, &message_id );
-			if( coap_type == CMT_CMD )
+			if( cmd_type == CMT_CMD )
 			{
 				printf("Receive commmand id[%d] and response it.\n", message_id );
 				IncrementSendCoapMessage( CMT_CMD_ACK, message_id );
 			}
-			else if( coap_type == CMT_Message_ACK )
+			else if( cmd_type == CMT_Message_ACK )
 			{
 				printf("Receive message response id[%d] .\n", message_id );
 			}
+		}
+		
+		ret = Check_SendCmdError();
+		if( ret ) {
+			printf("Send NB command error code : %d .\n", ret );
 		}
 	}
 }

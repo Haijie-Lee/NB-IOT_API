@@ -546,11 +546,11 @@ uint8_t DecrementReceiveCoapMessage( uint8_t *coap_type, uint8_t *message_id )
 uint8_t CheckSendMessageError(void)
 {
 	uint8_t ret;
-	ret = WriteData_ToSerialPort();
+	ret = WriteData_ToSerialPort( void );
 	if( ret > 1 ) {
 		LOGE("WriteData_ToSerialPort function error[%d].\n", ret);
 	}
-	ret = IF_SendMessageError();
+	ret = IF_SendMessageError(void);
 	return ret;
 }
 

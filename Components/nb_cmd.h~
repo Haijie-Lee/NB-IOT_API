@@ -81,7 +81,7 @@ uint8_t Disconnnect_IOT_Platfrom(void);
 	参数：无。
 	返回值：成功返回 0，失败返回错误码。
 */
-
+uint8_t Check_SendCmdError(void);
 
 // ——————————————   END   —————————————— //
 

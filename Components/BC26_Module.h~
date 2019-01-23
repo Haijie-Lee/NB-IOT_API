@@ -78,7 +78,7 @@ uint8_t SendMessage( uint8_t *buff, uint8_t data_length );
 				@data_length: 接收【Coap数据流长度】的指针。。
 	返回值：成功返回 0，失败返回错误码。
 */
-uint8_t ReceiveMessage( uint8_t *out_buff, uint16_t buff_size, uint16_t *data_length );
+uint8_t ReceiveMessage( uint8_t *out_buff, uint16_t buff_size, uint8_t *data_length );
 
 /* 功能：发送AT指令到NB模组。
 	说明：若无法发送命令，可能是当前正在发送其他命令。

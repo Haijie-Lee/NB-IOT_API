@@ -1,6 +1,11 @@
-/* 
-	
-*/
+/* *Copyright(C), Haijie Lee. 2019. AllRightsReserved.
+	*FileName:  公共函数的头文件.
+	*Author:  Haijie Lee.
+	*Version:  1.5.
+	*Date:  2019.01.22.
+	*Description:  用户可通过调用此文件的接口函数完成一些通用功能，例如字节序转换、字符串类型转换。
+	*Others:  用户不应随意修改此文件，除非你知道自己在做什么。
+*/ 
 #ifndef   IOT_API__COMPONENT__COMMON_FUNCTION_H
 #define  IOT_API__COMPONENT__COMMON_FUNCTION_H
 
