@@ -110,6 +110,8 @@ uint8_t WriteData_ToSerialPort( void );
 */
 uint8_t ReadData_FromSerialPort( void );
 
+void RepealCmd(void);
+
 // ——————————————    END    —————————————— //
 
 

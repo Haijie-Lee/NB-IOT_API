@@ -9,8 +9,10 @@
 #ifndef IOT_API__COMPONENT__COAP_H
 #define IOT_API__COMPONENT__COAP_H
 
+
 #include <stdint.h>
 
+#include "iot_user.h"
 
 
 // ——————————————    接口定义    —————————————— //

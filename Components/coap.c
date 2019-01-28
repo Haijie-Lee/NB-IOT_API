@@ -71,7 +71,7 @@ struct IOT_Message_ACK_t  // 8 byte
 }__attribute__((__packed__)) gl_Message_ACK;	 /* IOT 上报消息回复 */
 
 
-struct _IOT_CMD_t_
+struct IOT_CMD_t_
 {
 	uint8_t version;
 	uint8_t type;
@@ -102,8 +102,10 @@ struct IOT_CMD_ACK_t // 12 byte
 // ——————————————    本地函数声明    —————————————— //
 
 uint8_t check_sum(char* buffer, uint32_t len);
-uint8_t Process_MessageACK( uint8_t *rec_buf, uint8_t message_type );
-uint8_t Process_Cmd( uint8_t *rec_buf, uint8_t message_type );
+uint8_t Process_MessageACK( uint8_t *rec_buf );
+uint8_t Process_Cmd( uint8_t *rec_buf );
+uint16_t IncrementMessage( uint8_t message_id );
+uint16_t IncrementCmdAck( uint8_t message_id );
 
 // ——————————————    接口函数源    —————————————— //
 
@@ -149,9 +151,10 @@ uint8_t Init_Coap(const char* imei, const char* imsi)
 			gl_TLV_table[i].value = malloc(8);
 	}
 	
-	#ifdef USE_QUEUE
-	LOGI("Use message queue.\n");
+	#ifdef USE_ENDIAN_CONVERT
+	LOGI("Use endian convert.\n");
 	#endif
+	
 	
 	data_length = sizeof(gl_IOT_Message);
 	if( data_length != MESSAGE_HEAD_LEN ) {
@@ -167,7 +170,7 @@ uint8_t Init_Coap(const char* imei, const char* imsi)
 
 uint8_t Put_TlvValue(uint8_t tlv_index, void* value)
 {
-	uint8_t *buf1, *buf2, i, temp;
+	uint8_t *buf1=NULL, *buf2=NULL, i, temp;
 	
 	if(tlv_index > TLV_MAX) {
 		LOGE("Put_TlvValue error: TLV_index out of range.\n");
@@ -212,7 +215,7 @@ uint8_t Put_TlvValue(uint8_t tlv_index, void* value)
 	}
 	else if(gl_TLV_table[tlv_index].flag > 0x04)
 	{
-		gl_TLV_table[tlv_index].value = (void *)&value;
+		gl_TLV_table[tlv_index].value = (void *)value;
 	}
 	else {
 		#ifdef USE_ENDIAN_CONVERT
@@ -400,107 +403,36 @@ void Put_TimeStamp(uint64_t timestamp)
 
 uint8_t IncrementSendCoapMessage(  uint8_t coap_type, uint8_t message_id )
 {
-	uint8_t ret, *buf, buf_coap[COAP_LENGTH_MAX]={0};
-	uint16_t message_index, length, i, j, data_length;
-	static uint16_t get_message_sequence = 0;
-	IOT_TlvCollector_t p;
+	uint16_t data_length=0;
 	
-	if( coap_type != CMT_Message || coap_type !=  CMT_CMD_ACK ) {
-		LOGE("IncrementSendCoapMessage error: coap_type not exist.\n", message_id);
-		return 0;
+	if( coap_type == CMT_Message ) 
+	{
+		data_length = IncrementMessage( message_id );
 	}
-	if( message_id > 0 ) {
-		for( i=0; i<MESSAGE_MAX; i++ ) {
-			if(message_id == gl_Message_table[i].message_type) break;
-		}
-		if(i == MESSAGE_MAX) {
-			LOGE("IncrementSendCoapMessage error: message_id[] not found.\n", message_id);
-			return 0;
-		}
-		else 
-			message_index = i;
+	else if( coap_type == CMT_CMD_ACK ) 
+	{
+		data_length = IncrementCmdAck( message_id );
 	}
 	else {
-		message_index = get_message_sequence++;
-		if (get_message_sequence >= MESSAGE_MAX)
-			get_message_sequence = 0;
-	}
-
-	if( gl_Message_table[message_index].send_ack ) {
-		LOGI("GET_IOT_SendMessage warning: Message[%d] had not been ack.\n",gl_Message_table[message_index].message_type);
-	}
-	length = MESSAGE_HEAD_LEN;
-	
-	for( i=1; i<=gl_Message_table[message_index].tlv_use[0]; i++ )
-	{
-		p = gl_TLV_table[ gl_Message_table[message_index].tlv_use[i] ];
-		//LOGE("type :%d, length: %d, value:%p \n", p.type, p.flag, p.value);
-		data_length = p.flag&0x0F;
-		
-		buf_coap[length++] = p.type;	// copy type of tlv
-		
-		if( data_length<=4 ) {
-			#ifdef USE_ENDIAN_CONVERT
-			*(uint16_t *)( buf_coap + length ) = host2NetInt16( data_length );
-			#endif
-			buf = (uint8_t *)(&p.value);
-			for(j=0; j<data_length; j++)
-				buf_coap[ length + j ] = buf[j];
-		}
-		else if(data_length == 8) {
-			#ifdef USE_ENDIAN_CONVERT
-			*(uint16_t *)( buf_coap + length ) = host2NetInt16( data_length );
-			#endif
-			*(uint64_t *)( buf_coap + length ) = *(uint64_t *)p.value;
-		}else {
-			if( p.value != NULL ) {
-				data_length = strlen(p.value);
-				#ifdef USE_ENDIAN_CONVERT
-				*(uint16_t *)(buf_coap+length) = host2NetInt16( data_length );
-				#endif
-				memcpy( buf_coap+length+2, p.value,  data_length );
-			}else {
-				*(uint16_t *)(buf_coap+length) = 0;
-				data_length = 0;
-			}
-		}
-		length = length+data_length+2;
+		LOGE("IncrementSendCoapMessage[%d] error: coap_type[%d] not exist.\n", message_id, coap_type);
+		return 1;
 	}
 	
-	#ifdef USE_ENDIAN_CONVERT
-	gl_IOT_Message.message_length = host2NetInt16( length - MESSAGE_HEAD_LEN );
-	gl_IOT_Message.length = host2NetInt16( length - 4 + 1 );	// coap length
-	gl_IOT_Message.dtag = host2NetInt16( net2HostInt16(gl_IOT_Message.dtag) +1);
-	#else
-	gl_IOT_Message.message_length = length - MESSAGE_HEAD_LEN;
-	gl_IOT_Message.length = length - 4 + 1;	// coap length
-	gl_IOT_Message.dtag = gl_IOT_Message.dtag +1;
-	#endif
-	
-	gl_IOT_Message.message_type = gl_Message_table[message_index].message_type;
-	*(struct IOT_Message_t *)buf_coap = gl_IOT_Message;
-	
-	buf_coap[length] = check_sum( buf_coap, length );
-	gl_Message_table[message_index].send_ack = 1;
-	length += 1;
-	
-	ret = SendMessage( buf_coap, length );
-	if( ret ) {
-		LOGE(" IncrementSendCoapMessage error: send message failed[%d].\n", ret );
-		return 0;
+	if( data_length == 0 ) {
+		return 2;
 	}
-	
-	return length;
+	else 
+	return 0;
 }
 
 
 uint8_t DecrementReceiveCoapMessage( uint8_t *coap_type, uint8_t *message_id )
 {
 	uint16_t data_length=0;
-	uint8_t i,*buf, ret=0, rec_buf[COAP_LENGTH_MAX]={0};
+	uint8_t ret=0, rec_buf[COAP_LENGTH_MAX]={0};
 	
 	if( coap_type == NULL || message_id == NULL ) {
-		LOGE("DecrementReceiveCoapMessage error: coap_type or message_id can't be empty.\n", ret);
+		LOGE("DecrementReceiveCoapMessage error[%d]: coap_type or message_id can't be empty.\n", ret);
 		return 1;
 	}
 	ret = ReceiveMessage( rec_buf, COAP_LENGTH_MAX, &data_length );
@@ -508,7 +440,7 @@ uint8_t DecrementReceiveCoapMessage( uint8_t *coap_type, uint8_t *message_id )
 		LOGE("DecrementReceiveCoapMessage error[%d]: can not receive message.\n", ret);
 		return 2;
 	}
-	if( check_sum(rec_buf, data_length-1) != rec_buf[data_length-1] )
+	if( check_sum((char *)rec_buf, data_length-1) != rec_buf[data_length-1] )
 	{
 		LOGE("DecrementReceiveCoapMessage error: check sum error.\n");
 		return 3;
@@ -516,9 +448,9 @@ uint8_t DecrementReceiveCoapMessage( uint8_t *coap_type, uint8_t *message_id )
 	
 	if( rec_buf[1] == CMT_Message_ACK)
 	{
-		ret = Process_MessageACK( rec_buf, gl_Message_ACK.message_type );
+		ret = Process_MessageACK( rec_buf );
 		if( ret ) {
-			LOGE("DecrementReceiveCoapMessage error: recived message_type not found..\n");
+			LOGE("DecrementReceiveCoapMessage error: recived message ack and message_type not found.\n");
 			return 4;
 		}
 		*message_id = gl_Message_ACK.message_type;
@@ -526,9 +458,9 @@ uint8_t DecrementReceiveCoapMessage( uint8_t *coap_type, uint8_t *message_id )
 	}
 	else if( rec_buf[1] == CMT_CMD) 
 	{
-		ret = Process_Cmd( rec_buf, gl_Message_ACK.message_type );
+		ret = Process_Cmd( rec_buf );
 		if( ret>1 ) {
-			LOGE("DecrementReceiveCoapMessage error: recived message_type not found..\n");
+			LOGE("DecrementReceiveCoapMessage error: recived cmd and cmd_type not found.\n");
 			return 4;
 		}
 		*coap_type = CMT_CMD;
@@ -548,7 +480,8 @@ uint8_t CheckSendMessageError(void)
 	uint8_t ret;
 	ret = WriteData_ToSerialPort();
 	if( ret > 1 ) {
-		LOGE("WriteData_ToSerialPort function error[%d].\n", ret);
+		//LOGE("WriteData_ToSerialPort function error[%d].\n", ret);
+		;
 	}
 	ret = IF_SendMessageError();
 	return ret;
@@ -581,18 +514,19 @@ uint8_t check_sum(char* buffer, uint32_t len)
 }
 
 
-uint8_t Process_MessageACK( uint8_t *rec_buf, uint8_t message_type )
+uint8_t Process_MessageACK( uint8_t *rec_buf )
 {
 	int i;
+	
+	gl_Message_ACK = *( (struct IOT_Message_ACK_t *)rec_buf );		// copy message ack to gl_Message_Ack
+	
 	for(i=0; i<MESSAGE_MAX; i++) {
-		if(message_type == gl_Message_table[i].message_type) break;
+		if(gl_Message_ACK.message_type == gl_Message_table[i].message_type) break;
 	}
 	if(i == MESSAGE_MAX) {
-		LOGE("Process_MessageACK error: ‘message_type’ not found.\n");
 		return 1;
 	}
 	
-	gl_Message_ACK = *( (struct IOT_Message_ACK_t *)rec_buf );		// copy message ack to gl_Message_Ack
 	#ifdef USE_ENDIAN_CONVERT
 	gl_Message_ACK.dtag = net2HostInt16( gl_Message_ACK.dtag );
 	gl_Message_ACK.length = net2HostInt16( gl_Message_ACK.length );
@@ -602,7 +536,7 @@ uint8_t Process_MessageACK( uint8_t *rec_buf, uint8_t message_type )
 }
 
 
-uint8_t Process_Cmd( uint8_t *rec_buf, uint8_t message_type )
+uint8_t Process_Cmd( uint8_t *rec_buf )
 {
 	uint8_t *buf;
 	uint16_t i, data_length;
@@ -612,6 +546,7 @@ uint8_t Process_Cmd( uint8_t *rec_buf, uint8_t message_type )
 		buf[i] = rec_buf[i];
 	if( gl_IOT_CMD.tlv != NULL )
 		free(gl_IOT_CMD.tlv);		// free old tlv space
+	
 	#ifdef USE_ENDIAN_CONVERT
 	gl_IOT_CMD.cmd_length = net2HostInt16( gl_IOT_CMD.cmd_length );
 	gl_IOT_CMD.dtag = net2HostInt16( gl_IOT_CMD.dtag );
@@ -640,3 +575,193 @@ uint8_t Process_Cmd( uint8_t *rec_buf, uint8_t message_type )
 	
 	return 0;
 }
+
+
+uint16_t IncrementMessage( uint8_t message_id )
+{
+	uint8_t ret, *buf, buf_coap[COAP_LENGTH_MAX]={0};
+	uint16_t message_index, length, i, j, data_length;
+	IOT_TlvCollector_t p;
+	
+	for( i=0; i<MESSAGE_MAX; i++ ) {
+		if(message_id == gl_Message_table[i].message_type) break;
+	}
+	if(i == MESSAGE_MAX) {
+		LOGE("IncrementSendCoapMessage error: message_id[%d] not found.\n", message_id);
+		return 0;
+	}
+	else 
+		message_index = i;
+	
+	if( gl_Message_table[message_index].send_ack ) {
+		LOGI("GET_IOT_SendMessage warning: Message[%d] had not been ack.\n",gl_Message_table[message_index].message_type);
+	}
+	length = MESSAGE_HEAD_LEN;
+	
+	if( gl_Message_table[message_index].tlv_use != NULL )
+	for( i = 1; i <= gl_Message_table[message_index].tlv_use[0]; i++ )
+	{
+		p = gl_TLV_table[ gl_Message_table[message_index].tlv_use[i] ];
+		//LOGI("type :%d, length: %d, value:%p \n", p.type, p.flag, p.value);
+		data_length = p.flag&0x0F;
+		
+		buf_coap[length++] = p.type;	// copy type of tlv
+		
+		if( data_length<=4 ) {
+			#ifdef USE_ENDIAN_CONVERT
+			*(uint16_t *)( buf_coap + length ) = host2NetInt16( data_length );
+			#else
+			*(uint16_t *)( buf_coap + length ) = data_length;
+			#endif
+			buf = (uint8_t *)(&p.value);
+			for(j=0; j<data_length; j++)
+				buf_coap[ length + j ] = buf[j];
+		}
+		else if(data_length == 8) {
+			#ifdef USE_ENDIAN_CONVERT
+			*(uint16_t *)( buf_coap + length ) = host2NetInt16( data_length );
+			#else
+			*(uint16_t *)( buf_coap + length ) = data_length;
+			#endif
+			*(uint64_t *)( buf_coap + length ) = *(uint64_t *)p.value;
+		}else {
+			if( p.value != NULL ) {
+				data_length = strlen(p.value);
+				#ifdef USE_ENDIAN_CONVERT
+				*(uint16_t *)(buf_coap+length) = host2NetInt16( data_length );
+				#else
+				*(uint16_t *)( buf_coap + length ) = data_length;
+				#endif
+				memcpy( buf_coap+length+2, p.value,  data_length );
+
+			}else {
+				*(uint16_t *)(buf_coap+length) = 0;
+				data_length = 0;
+			}
+		}
+		length = length+data_length+2;
+	}
+	
+	#ifdef USE_ENDIAN_CONVERT
+	gl_IOT_Message.message_length = host2NetInt16( length - MESSAGE_HEAD_LEN );
+	gl_IOT_Message.length = host2NetInt16( length - 4 + 1 );	// coap length
+	gl_IOT_Message.dtag = host2NetInt16( net2HostInt16(gl_IOT_Message.dtag) +1);
+	#else
+	gl_IOT_Message.message_length = length - MESSAGE_HEAD_LEN;
+	gl_IOT_Message.length = length - 4 + 1;	// coap length
+	gl_IOT_Message.dtag = gl_IOT_Message.dtag +1;
+	#endif
+	
+	gl_IOT_Message.message_type = gl_Message_table[message_index].message_type;
+	*(struct IOT_Message_t *)buf_coap = gl_IOT_Message;
+	
+	buf_coap[length] = check_sum( (char *)buf_coap, length );
+	gl_Message_table[message_index].send_ack = 1;
+	length += 1;
+	
+	ret = SendMessage( buf_coap, length );
+	if( ret ) {
+		LOGE(" IncrementSendCoapMessage error: send message failed[%d].\n", ret );
+		return 0;
+	}
+	
+	return length;
+}
+
+
+uint16_t IncrementCmdAck( uint8_t message_id )
+{
+	uint8_t ret, *buf, buf_coap[COAP_LENGTH_MAX]={0};
+	uint16_t message_index, length, i, j, data_length;
+	IOT_TlvCollector_t p;
+	
+	for( i=0; i<CMD_MAX; i++ ) {
+		if(message_id == gl_ACK_table[i].cmd_type) break;
+	}
+	if(i == CMD_MAX) {
+		LOGE("IncrementSendCoapMessage error: message_id[%d] not found.\n", message_id);
+		return 0;
+	}
+	else 
+		message_index = i;
+	
+	if( gl_CMD_table[message_index].send_ack  != 1 ) {
+		LOGI("IncrementCmdAck warning: Message[%d] had not been receive.\n", gl_ACK_table[message_index].cmd_type);
+	}
+	length = ACK_HEAD_LEN;
+	
+	if( gl_ACK_table[i].function != NULL)
+	gl_ACK_table[i].callback_result = gl_ACK_table[i].function( message_id );
+	else gl_ACK_table[i].callback_result = 1;	// default result is fail.
+	gl_CMD_table[i].send_ack = 0;
+	buf_coap[length++] = gl_ACK_table[i].callback_result;
+	
+	if( gl_ACK_table[message_index].tlv_use != NULL )
+	for( i = 1; i <= gl_ACK_table[message_index].tlv_use[0]; i++ )
+	{
+		p = gl_TLV_table[ gl_ACK_table[message_index].tlv_use[i] ];
+		//LOGE("type :%d, length: %d, value:%p \n", p.type, p.flag, p.value);
+		data_length = p.flag&0x0F;
+		
+		buf_coap[length++] = p.type;	// copy type of tlv
+		
+		if( data_length<=4 ) {
+			#ifdef USE_ENDIAN_CONVERT
+			*(uint16_t *)( buf_coap + length ) = host2NetInt16( data_length );
+			#else
+			*(uint16_t *)( buf_coap + length ) = data_length;
+			#endif
+			buf = (uint8_t *)(&p.value);
+			for(j=0; j<data_length; j++)
+				buf_coap[ length + j ] = buf[j];
+		}
+		else if(data_length == 8) {
+			#ifdef USE_ENDIAN_CONVERT
+			*(uint16_t *)( buf_coap + length ) = host2NetInt16( data_length );
+			#else
+			*(uint16_t *)( buf_coap + length ) = data_length;
+			#endif
+			*(uint64_t *)( buf_coap + length ) = *(uint64_t *)p.value;
+		}else {
+			if( p.value != NULL ) {
+				data_length = strlen(p.value);
+				#ifdef USE_ENDIAN_CONVERT
+				*(uint16_t *)(buf_coap+length) = host2NetInt16( data_length );
+				#else
+				*(uint16_t *)( buf_coap + length ) = data_length;
+				#endif
+				memcpy( buf_coap+length+2, p.value,  data_length );
+			}else {
+				*(uint16_t *)(buf_coap+length) = 0;
+				data_length = 0;
+			}
+		}
+		length = length+data_length+2;
+	}
+	
+	#ifdef USE_ENDIAN_CONVERT
+	gl_CMD_ACK.ack_length = host2NetInt16( length - ACK_HEAD_LEN );
+	gl_CMD_ACK.length = host2NetInt16( length - 4 + 1 );	// coap length
+	gl_CMD_ACK.dtag = host2NetInt16( net2HostInt16(gl_IOT_Message.dtag) +1);
+	#else
+	gl_CMD_ACK.ack_length = length - ACK_HEAD_LEN;
+	gl_CMD_ACK.length = length - 4 + 1;	// coap length
+	gl_CMD_ACK.dtag = gl_IOT_Message.dtag +1;
+	#endif
+	
+	gl_CMD_ACK.cmd_type = gl_ACK_table[message_index].cmd_type;
+	*(struct IOT_CMD_ACK_t *)buf_coap = gl_CMD_ACK;
+	
+	buf_coap[length] = check_sum( (char *)buf_coap, length );
+	gl_CMD_table[message_index].send_ack =0;
+	length += 1;
+	
+	ret = SendMessage( buf_coap, length );
+	if( ret ) {
+		LOGE(" IncrementSendCoapMessage error: send message failed[%d].\n", ret );
+		return 0;
+	}
+	
+	return length;
+}
+

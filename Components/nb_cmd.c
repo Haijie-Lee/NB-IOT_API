@@ -42,7 +42,7 @@
 uint8_t Init_NB(char *output_imei, char *output_imsi )
 {
 	uint8_t ret;
-	uint8_t imei[16]={0}, imsi[16]={0};
+	char imei[16]={0}, imsi[16]={0};
 	
 	ret = AT_SleepMode_Lock();
 	CHECK_RETURN( ret );
@@ -134,7 +134,7 @@ uint8_t Disconnnect_IOT_Platfrom(void)
 	return 0;
 }
 
-
+/*
 uint8_t Check_SendCmdError(void)
 {
 	uint8_t ret;
@@ -145,7 +145,7 @@ uint8_t Check_SendCmdError(void)
 	}
 	ret = IF_ReceiveMessage();
 	return ret;
-}
+}*/
 
 // ——————————————    本地函数源    —————————————— //
 
